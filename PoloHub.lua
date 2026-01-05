@@ -1,234 +1,249 @@
--- PoloHub Mobile GUI
--- Чистый Roblox UI с серой полупрозрачной темой
+-- ============================================
+-- ПОЛНАЯ ДИАГНОСТИКА СКРИПТА POLOHUB
+-- ============================================
 
-local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
+print("🔍 Начинаю диагностику POLOHUB GUI...")
+print("═" .. string.rep("═", 50))
 
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+-- 1. ПРОВЕРКА ССЫЛКИ И ЗАГРУЗКИ
+local test_url = "https://raw.githubusercontent.com/polopolka211/PolopoHub/refs/heads/main/PoloHub.lua"
+print("[1/5] Проверяю доступ к файлу GitHub...")
+print("📎 URL:", test_url)
 
--- 1. СОЗДАЕМ ГЛАВНОЕ ОКНО
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "PoloHub"
-MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)  -- Темно-серый
-MainFrame.BackgroundTransparency = 0.2  -- 20% прозрачности
-MainFrame.BorderSizePixel = 0
-MainFrame.Position = UDim2.new(0.1, 0, 0.1, 0)  -- 10% от краев
-MainFrame.Size = UDim2.new(0, 300, 0, 400)  -- Компактный размер
-MainFrame.AnchorPoint = Vector2.new(0, 0)
-
--- Сглаженные углы
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 12)
-UICorner.Parent = MainFrame
-
--- Тонкая обводка
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(80, 80, 80)  -- Серая обводка
-UIStroke.Thickness = 1
-UIStroke.Parent = MainFrame
-
--- 2. ЗАГОЛОВОК С ВОЗМОЖНОСТЬЮ ПЕРЕТАСКИВАНИЯ
-local TitleFrame = Instance.new("Frame")
-TitleFrame.Name = "TitleBar"
-TitleFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-TitleFrame.BackgroundTransparency = 0.3
-TitleFrame.BorderSizePixel = 0
-TitleFrame.Size = UDim2.new(1, 0, 0, 40)
-TitleFrame.Parent = MainFrame
-
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 12)
-TitleCorner.Parent = TitleFrame
-
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Name = "Title"
-TitleLabel.Text = "POLOHUB"
-TitleLabel.TextColor3 = Color3.fromRGB(180, 180, 180)  -- Светло-серый
-TitleLabel.TextSize = 18
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Size = UDim2.new(1, -40, 1, 0)
-TitleLabel.Position = UDim2.new(0, 10, 0, 0)
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-TitleLabel.Parent = TitleFrame
-
--- Кнопка закрытия (опционально)
-local CloseButton = Instance.new("TextButton")
-CloseButton.Name = "Close"
-CloseButton.Text = "×"
-CloseButton.TextColor3 = Color3.fromRGB(180, 180, 180)
-CloseButton.TextSize = 24
-CloseButton.Font = Enum.Font.GothamBold
-CloseButton.BackgroundTransparency = 1
-CloseButton.Size = UDim2.new(0, 40, 1, 0)
-CloseButton.Position = UDim2.new(1, -40, 0, 0)
-CloseButton.Parent = TitleFrame
-
-CloseButton.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible  -- Скрываем/показываем по клику
+local content, http_error
+local http_success, http_result = pcall(function()
+    return game:HttpGet(test_url, true) -- true = асинхронный запрос
 end)
 
--- 3. ОБЛАСТЬ ДЛЯ КНОПОК
-local ContentFrame = Instance.new("Frame")
-ContentFrame.Name = "Content"
-ContentFrame.BackgroundTransparency = 1
-ContentFrame.Position = UDim2.new(0, 10, 0, 50)
-ContentFrame.Size = UDim2.new(1, -20, 1, -60)
-ContentFrame.Parent = MainFrame
+if http_success then
+    content = http_result
+    print("✅ Файл успешно загружен")
+    print("   📏 Размер:", #content, "символов")
+    print("   🔠 Первые 100 символов:", string.sub(content, 1, 100) .. "...")
+else
+    http_error = http_result
+    print("❌ ОШИБКА ЗАГРУЗКИ ФАЙЛА!")
+    print("   🚫 Тип ошибки:", type(http_error))
+    print("   📄 Сообщение:", tostring(http_error))
+    
+    -- Попробуем альтернативную ссылку
+    print("   🔄 Пробую альтернативный формат ссылки...")
+    local alt_url = "https://raw.githubusercontent.com/polopolka211/PolopoHub/main/PoloHub.lua"
+    local alt_success, alt_content = pcall(game.HttpGet, game, alt_url)
+    if alt_success then
+        print("   ✅ Альтернативная ссылка сработала!")
+        content = alt_content
+        test_url = alt_url
+    else
+        print("   ❌ Альтернативная ссылка тоже не работает")
+        print("   💡 Рекомендация: проверьте, публичный ли репозиторий PolopoHub")
+        print("      Откройте в браузере: https://github.com/polopolka211/PolopoHub")
+        print("      Если не видите кода, в Settings → General сделайте репозиторий Public")
+        return
+    end
+end
 
-local UIListLayout = Instance.new("UIListLayout")
-UIListLayout.Padding = UDim.new(0, 8)  -- Отступ между кнопками
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Parent = ContentFrame
+print("═" .. string.rep("═", 50))
 
--- 4. ФУНКЦИЯ ДЛЯ СОЗДАНИЯ КНОПКИ
-local function CreateButton(text, description, callback)
-    local ButtonFrame = Instance.new("Frame")
-    ButtonFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    ButtonFrame.BackgroundTransparency = 0.4
-    ButtonFrame.BorderSizePixel = 0
-    ButtonFrame.Size = UDim2.new(1, 0, 0, 50)
-    ButtonFrame.LayoutOrder = #ContentFrame:GetChildren()
+-- 2. ПРОВЕРКА СИНТАКСИСА LUA
+print("[2/5] Анализирую синтаксис Lua...")
+
+local chunk, parse_error = loadstring(content, "PoloHubGUI")
+
+if chunk then
+    print("✅ Синтаксис корректный")
     
-    local ButtonCorner = Instance.new("UICorner")
-    ButtonCorner.CornerRadius = UDim.new(0, 8)
-    ButtonCorner.Parent = ButtonFrame
+    -- Проверяем, какие глобальные переменные создаст скрипт
+    local env = {
+        print = function(...)
+            local args = {...}
+            local result = ""
+            for i = 1, select('#', ...) do
+                result = result .. tostring(args[i]) .. "\t"
+            end
+            print("   [СКРИПТ]:", result)
+        end,
+        wait = task.wait,
+        game = game,
+        Color3 = Color3,
+        UDim2 = UDim2,
+        Vector2 = Vector2,
+        Enum = Enum,
+        Instance = Instance,
+        task = task
+    }
     
-    local ButtonStroke = Instance.new("UIStroke")
-    ButtonStroke.Color = Color3.fromRGB(90, 90, 90)
-    ButtonStroke.Thickness = 1
-    ButtonStroke.Parent = ButtonFrame
+    setfenv(chunk, env)
     
-    local ButtonLabel = Instance.new("TextLabel")
-    ButtonLabel.Text = text
-    ButtonLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-    ButtonLabel.TextSize = 16
-    ButtonLabel.Font = Enum.Font.GothamSemibold
-    ButtonLabel.BackgroundTransparency = 1
-    ButtonLabel.Size = UDim2.new(1, -20, 0.6, 0)
-    ButtonLabel.Position = UDim2.new(0, 10, 0, 5)
-    ButtonLabel.TextXAlignment = Enum.TextXAlignment.Left
-    ButtonLabel.Parent = ButtonFrame
+else
+    print("❌ ОШИБКА СИНТАКСИСА!")
+    print("   📍 Позиция ошибки:", parse_error)
     
-    local DescLabel = Instance.new("TextLabel")
-    DescLabel.Text = description
-    DescLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-    DescLabel.TextSize = 12
-    DescLabel.Font = Enum.Font.Gotham
-    DescLabel.BackgroundTransparency = 1
-    DescLabel.Size = UDim2.new(1, -20, 0.4, 0)
-    DescLabel.Position = UDim2.new(0, 10, 0.6, 0)
-    DescLabel.TextXAlignment = Enum.TextXAlignment.Left
-    DescLabel.Parent = ButtonFrame
+    -- Пытаемся найти строку с ошибкой
+    if type(parse_error) == "string" then
+        local line_num = parse_error:match(":(%d+):")
+        if line_num then
+            line_num = tonumber(line_num)
+            local lines = {}
+            for line in content:gmatch("[^\n]+") do
+                table.insert(lines, line)
+            end
+            if lines[line_num] then
+                print("   📝 Строка " .. line_num .. ":", lines[line_num])
+            end
+        end
+    end
+    return
+end
+
+print("═" .. string.rep("═", 50))
+
+-- 3. ВЫПОЛНЕНИЕ СКРИПТА В ЗАЩИЩЕННОМ РЕЖИМЕ
+print("[3/5] Выполняю скрипт в защищенном режиме...")
+
+local exec_success, exec_error = pcall(function()
+    -- Создаем песочницу для безопасного выполнения
+    local sandbox = {
+        print = print,
+        warn = warn,
+        error = error,
+        pcall = pcall,
+        xpcall = xpcall,
+        select = select,
+        type = type,
+        tostring = tostring,
+        tonumber = tonumber,
+        pairs = pairs,
+        ipairs = ipairs,
+        next = next,
+        unpack = unpack,
+        table = table,
+        string = string,
+        math = math,
+        coroutine = coroutine,
+        _VERSION = _VERSION,
+        
+        -- Roblox API (ограниченный набор)
+        game = game,
+        workspace = workspace,
+        Players = game:GetService("Players"),
+        CoreGui = game:GetService("CoreGui"),
+        UserInputService = game:GetService("UserInputService"),
+        TweenService = game:GetService("TweenService"),
+        
+        -- Roblox типы
+        Color3 = Color3,
+        UDim2 = UDim2,
+        Vector2 = Vector2,
+        Vector3 = Vector3,
+        CFrame = CFrame,
+        Enum = Enum,
+        Instance = Instance,
+        BrickColor = BrickColor,
+        
+        -- Безопасные аналоги
+        spawn = task.spawn,
+        delay = task.delay,
+        wait = task.wait,
+        
+        -- Ограничения
+        getfenv = function() return sandbox end,
+        setfenv = function(f, env) return f end,
+        loadstring = function() error("loadstring disabled in sandbox") end,
+        require = function() error("require disabled in sandbox") end,
+        _G = sandbox
+    }
     
-    local ButtonButton = Instance.new("TextButton")
-    ButtonButton.Text = ""
-    ButtonButton.BackgroundTransparency = 1
-    ButtonButton.Size = UDim2.new(1, 0, 1, 0)
-    ButtonButton.Parent = ButtonFrame
+    setfenv(chunk, sandbox)
+    return chunk()
+end)
+
+if exec_success then
+    print("✅ Скрипт выполнен без критических ошибок")
+    print("   💡 Возможно, GUI создано, но невидимо или находится вне экрана")
+else
+    print("❌ ОШИБКА ВЫПОЛНЕНИЯ СКРИПТА!")
+    print("   📄 Сообщение:", tostring(exec_error))
     
-    -- Эффект при нажатии
-    ButtonButton.MouseButton1Click:Connect(function()
-        if callback then
-            callback()
+    -- Анализируем распространенные ошибки
+    local err_msg = tostring(exec_error):lower()
+    
+    if err_msg:find("attempt to index") then
+        print("   🔍 Возможно, не хватает Roblox-сервиса")
+    elseif err_msg:find("invalid argument") then
+        print("   🔍 Проблема с аргументами функции")
+    elseif err_msg:find("expected") then
+        print("   🔍 Ожидался другой тип данных")
+    elseif err_msg:find("cannot create instance") then
+        print("   🔍 Проблема с созданием Roblox-объектов")
+    end
+    
+    -- Выводим стек вызовов
+    print("   📊 Трассировка стека:")
+    local trace = debug.traceback(exec_error, 2)
+    for line in trace:gmatch("[^\n]+") do
+        print("      " .. line)
+    end
+end
+
+print("═" .. string.rep("═", 50))
+
+-- 4. ПРОВЕРКА ДОСТУПА К ИГРОВЫМ СЕРВИСАМ
+print("[4/5] Проверяю доступ к необходимым сервисам...")
+
+local required_services = {
+    "Players",
+    "CoreGui", 
+    "UserInputService",
+    "TweenService",
+    "Workspace"
+}
+
+local all_services_ok = true
+for _, service_name in ipairs(required_services) do
+    local success, service = pcall(game.GetService, game, service_name)
+    if success and service then
+        print("   ✅ " .. service_name .. " — доступен")
+    else
+        print("   ❌ " .. service_name .. " — НЕ доступен")
+        all_services_ok = false
+    end
+end
+
+if not all_services_ok then
+    print("   ⚠️  Отсутствуют некоторые сервисы. Это может быть причиной.")
+end
+
+print("═" .. string.rep("═", 50))
+
+-- 5. ЗАПУСК ПОЛНОЙ ВЕРСИИ СКРИПТА (если все проверки пройдены)
+print("[5/5] Пробую запустить оригинальный скрипт...")
+
+if content and chunk and all_services_ok then
+    print("🚀 Запускаю POLOHUB GUI...")
+    
+    -- Запускаем оригинальный код
+    local final_success, final_error = pcall(function()
+        local func = loadstring(content, "PoloHubFinal")
+        if func then
+            func()
         end
     end)
     
-    ButtonButton.MouseEnter:Connect(function()
-        game:GetService("TweenService"):Create(
-            ButtonFrame,
-            TweenInfo.new(0.2),
-            {BackgroundTransparency = 0.2}
-        ):Play()
-    end)
-    
-    ButtonButton.MouseLeave:Connect(function()
-        game:GetService("TweenService"):Create(
-            ButtonFrame,
-            TweenInfo.new(0.2),
-            {BackgroundTransparency = 0.4}
-        ):Play()
-    end)
-    
-    ButtonFrame.Parent = ContentFrame
-    return ButtonFrame
+    if final_success then
+        print("========================================")
+        print("🎉 POLOHUB GUI УСПЕШНО ЗАПУЩЕН!")
+        print("========================================")
+        print("💡 Если окно не видно, попробуйте:")
+        print("   1. Нажать RightControl для показа/скрытия")
+        print("   2. Проверить, что скрипт выполняется в правильном контексте")
+    else
+        print("❌ ФИНАЛЬНАЯ ОШИБКА ПРИ ЗАПУСКЕ:")
+        print("   " .. tostring(final_error))
+    end
+else
+    print("⚠️  Пропускаю финальный запуск из-за предыдущих ошибок")
 end
 
--- 5. ДОБАВЛЯЕМ ПРИМЕРНЫЕ КНОПКИ
-CreateButton("АВТО-ФАРМ", "Автоматический сбор ресурсов", function()
-    print("Авто-фарм активирован")
-    -- Ваш код здесь
-end)
-
-CreateButton("ТЕЛЕПОРТ", "Быстрая телепортация", function()
-    print("Телепорт активирован")
-    -- Ваш код здесь
-end)
-
-CreateButton("ESP / ВИДИМОСТЬ", "Отображение предметов и NPC", function()
-    print("ESP переключен")
-    -- Ваш код здесь
-end)
-
-CreateButton("НАСТРОЙКИ", "Настройки интерфейса", function()
-    print("Открыты настройки")
-    -- Ваш код здесь
-end)
-
--- 6. СИСТЕМА ПЕРЕТАСКИВАНИЯ (работает на телефоне!)
-local dragging = false
-local dragInput, dragStart, startPos
-
-local function Update(input)
-    local delta = input.Position - dragStart
-    MainFrame.Position = UDim2.new(
-        startPos.X.Scale, 
-        startPos.X.Offset + delta.X,
-        startPos.Y.Scale, 
-        startPos.Y.Offset + delta.Y
-    )
-end
-
-TitleFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-TitleFrame.InputChanged:Connect(function(input)
-    if (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) and dragging then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        Update(input)
-    end
-end)
-
--- 7. ФИНАЛЬНАЯ НАСТРОЙКА
-MainFrame.Parent = PlayerGui
-
--- Горячая клавиша для скрытия/показа
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        MainFrame.Visible = not MainFrame.Visible
-    end
-end)
-
-print("═" .. string.rep("═", 30))
-print("  POLOHUB GUI УСПЕШНО ЗАГРУЖЕН")
-print("  • Перетаскивайте за серую панель")
-print("  • RightControl - скрыть/показать")
-print("═" .. string.rep("═", 30))
+print("═" .. string.rep("═", 50))
+print("🔚 Диагностика завершена")
