@@ -1,218 +1,133 @@
 -- ============================================
--- POLOHUB - ШАБЛОН ИНТЕРФЕЙСА (Rayfield)
--- Только структура меню, без игровых функций
+-- POLOHUB - ITEMS FARM MANAGER
+-- Минималистичный интерфейс на Rayfield
 -- ============================================
 
--- Загружаем Rayfield Interface Suite
+-- Загружаем Rayfield
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Создаём главное окно
+-- Создаём окно
 local Window = Rayfield:CreateWindow({
-    Name = "POLOHUB INTERFACE",
-    LoadingTitle = "Загрузка интерфейса...",
-    LoadingSubtitle = "Чистый шаблон для изучения",
-    ConfigurationSaving = { Enabled = false }, -- Отключаем сохранение настроек
+    Name = "POLOHUB | ITEMS",
+    LoadingTitle = "Загрузка менеджера предметов...",
+    LoadingSubtitle = "by polopolka211",
+    ConfigurationSaving = { Enabled = true },
     Discord = { Enabled = false },
-    KeySystem = false, -- Без системы ключей
+    KeySystem = false,
 })
 
--- ============================================
--- ВКЛАДКА 1: ГЛАВНОЕ МЕНЮ (демонстрация элементов)
--- ============================================
-local MainTab = Window:CreateTab("Главное", nil) -- nil = без иконки
+-- Создаём вкладку Items
+local ItemsTab = Window:CreateTab("Items", nil)
 
--- Секция 1: Кнопки
-local ButtonSection = MainTab:CreateSection("Примеры кнопок")
+-- Секция для фарма предметов
+local FarmSection = ItemsTab:CreateSection("Items to Farm")
 
-local DemoButton1 = MainTab:CreateButton({
-    Name = "Кнопка 1 (простая)",
-    Callback = function()
-        print("Нажата простая кнопка")
-        -- Здесь будет ваша функция
-    end,
-})
+-- ФИНАЛЬНЫЙ ОБНОВЛЁННЫЙ список предметов YBA
+local AllYBAItems = {
+    "Mysterious Arrow",           -- Таинственная стрела
+    "Rokakaka Fruit",             -- Плод рокакаки
+    "Diamond",                    -- Алмаз
+    "Gold Coin",                  -- Золотая монета
+    "Quinton's Glove",            -- Перчатка Квинтона
+    "Steel Ball",                 -- Стальной шар
+    "Ancient Scroll",             -- Древний свиток
+    "Rib Cage of The Saint Corpse", -- Ребро святого (с добавлением corpse)
+    "Dio's Diary",                -- Дневник Дио
+    "Stone Mask",                 -- Каменная маска
+    "Lucky Arrow",                -- Счастливая стрела
+    "Christmas Present",          -- Рождественский подарок
+    "Caesar's Headband",          -- Повязка Цезаря (замена Zepelli's Headband)
+    "Pure Rokakaka",              -- Чистая рокакака
+    "Clackers",                   -- Кле́керы (добавлено)
+    "Lucky Stone Mask",           -- Счастливая каменная маска (добавлено)
+    "Zepelli's Hat",              -- Шапка Цеппели (добавлено)
+}
 
-local DemoButton2 = MainTab:CreateButton({
-    Name = "Кнопка 2 (с уведомлением)",
-    Callback = function()
-        Rayfield:Notify({
-            Title = "Уведомление",
-            Content = "Это пример уведомления Rayfield",
-            Duration = 3,
-        })
-        print("Нажата кнопка с уведомлением")
-    end,
-})
+-- Выпадающий список для выбора предметов
+local SelectedItems = {} -- Здесь будем хранить выбранные предметы
 
--- Секция 2: Переключатели
-local ToggleSection = MainTab:CreateSection("Примеры переключателей")
-
-local DemoToggle1 = MainTab:CreateToggle({
-    Name = "Переключатель 1",
-    CurrentValue = false,
-    Flag = "Toggle1Demo",
-    Callback = function(Value)
-        print("Переключатель 1: " .. (Value and "ВКЛ" or "ВЫКЛ"))
-        -- Здесь будет ваша функция при включении/выключении
-    end,
-})
-
-local DemoToggle2 = MainTab:CreateToggle({
-    Name = "Переключатель с сохранением",
-    CurrentValue = true,
-    Flag = "Toggle2Demo", -- Флаг для сохранения состояния
-    Callback = function(Value)
-        print("Сохранённый переключатель: " .. (Value and "ВКЛ" or "ВЫКЛ"))
-    end,
-})
-
--- Секция 3: Слайдеры
-local SliderSection = MainTab:CreateSection("Примеры слайдеров")
-
-local DemoSlider = MainTab:CreateSlider({
-    Name = "Числовой слайдер",
-    Range = {0, 100},
-    Increment = 5,
-    Suffix = "ед.",
-    CurrentValue = 50,
-    Flag = "SliderDemo",
-    Callback = function(Value)
-        print("Значение слайдера: " .. Value)
-        -- Здесь будет ваша функция при изменении значения
-    end,
-})
-
--- ============================================
--- ВКЛАДКА 2: НАСТРОЙКИ ИНТЕРФЕЙСА
--- ============================================
-local SettingsTab = Window:CreateTab("Настройки", nil)
-
--- Секция: Внешний вид
-local ThemeSection = SettingsTab:CreateSection("Внешний вид")
-
-local ThemeToggle = SettingsTab:CreateToggle({
-    Name = "Тёмная тема",
-    CurrentValue = true,
-    Flag = "DarkThemeSetting",
-    Callback = function(Value)
-        if Value then
-            Window:SetTheme("Dark")
+local ItemsDropdown = ItemsTab:CreateDropdown({
+    Name = "Items to Farm",
+    Options = AllYBAItems,
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "YBA_Items_Selection",
+    Callback = function(SelectedOptions)
+        SelectedItems = SelectedOptions
+        
+        if #SelectedOptions > 0 then
+            Rayfield:Notify({
+                Title = "Items Selected",
+                Content = "Selected " .. #SelectedOptions .. " items for farming",
+                Duration = 2,
+            })
+            
+            print("=== SELECTED ITEMS FOR FARMING ===")
+            for i, item in ipairs(SelectedOptions) do
+                print(i .. ". " .. item)
+            end
+            print("==================================")
         else
-            Window:SetTheme("Light")
+            print("No items selected for farming")
         end
-        print("Тема изменена на: " .. (Value and "Тёмную" or "Светлую"))
     end,
 })
 
-local ColorPicker = SettingsTab:CreateColorPicker({
-    Name = "Цвет акцентов",
-    Color = Color3.fromRGB(40, 40, 40), -- Серый цвет
-    Flag = "AccentColorSetting",
-    Callback = function(Color)
-        Window:ChangeColor(Color)
-        print("Цвет акцентов изменён")
+-- Кнопка для быстрого выбора/сброса
+local SelectionSection = ItemsTab:CreateSection("Quick Selection")
+
+local SelectAllButton = ItemsTab:CreateButton({
+    Name = "Select All Items",
+    Callback = function()
+        ItemsDropdown:Set(AllYBAItems)
+        print("All items selected")
+    end,
+})
+
+local ClearAllButton = ItemsTab:CreateButton({
+    Name = "Clear Selection",
+    Callback = function()
+        ItemsDropdown:Set({})
+        print("Selection cleared")
+    end,
+})
+
+-- Информационная секция
+local InfoSection = ItemsTab:CreateSection("Information")
+
+local StatusLabel = ItemsTab:CreateLabel("Status: Ready")
+local SelectedCountLabel = ItemsTab:CreateLabel("Selected: 0 items")
+
+-- Функция для обновления статуса
+local function updateStatus()
+    local count = #SelectedItems
+    SelectedCountLabel:Set("Selected: " .. count .. " item" .. (count == 1 and "" or "s"))
+    
+    if count > 0 then
+        StatusLabel:Set("Status: Farming " .. count .. " items")
+    else
+        StatusLabel:Set("Status: Idle")
     end
-})
+end
 
--- Секция: Элементы управления
-local ControlSection = SettingsTab:CreateSection("Управление")
+-- Обновляем статус при изменении выбора
+local originalCallback = ItemsDropdown.Callback
+ItemsDropdown.Callback = function(SelectedOptions)
+    SelectedItems = SelectedOptions
+    updateStatus()
+    originalCallback(SelectedOptions)
+end
 
-local WatermarkToggle = SettingsTab:CreateToggle({
-    Name = "Водяной знак",
-    CurrentValue = true,
-    Flag = "WatermarkSetting",
-    Callback = function(Value)
-        Rayfield:SetWatermarkVisibility(Value)
-        print("Водяной знак: " .. (Value and "Показан" or "Скрыт"))
-    end,
-})
-
-local HotkeyButton = SettingsTab:CreateButton({
-    Name = "Сменить горячую клавишу",
-    Callback = function()
-        Rayfield:Notify({
-            Title = "Смена клавиши",
-            Content = "Нажмите новую клавишу...",
-            Duration = 2,
-        })
-        -- Rayfield сам запросит новую клавишу
-    end,
-})
-
--- Секция: Информация
-local InfoSection = SettingsTab:CreateSection("Информация")
-
-local VersionLabel = SettingsTab:CreateLabel("PoloHub Template v1.0")
-local LibraryLabel = SettingsTab:CreateLabel("Rayfield Interface Suite")
-local InfoLabel = SettingsTab:CreateLabel("Этот шаблон - только для изучения")
-
--- ============================================
--- ВКЛАДКА 3: ТЕСТИРОВАНИЕ (дополнительные элементы)
--- ============================================
-local TestTab = Window:CreateTab("Тесты", nil)
-
-local TestSection = TestTab:CreateSection("Другие элементы UI")
-
--- Выпадающий список
-local TestDropdown = TestTab:CreateDropdown({
-    Name = "Пример списка",
-    Options = {"Вариант 1", "Вариант 2", "Вариант 3"},
-    CurrentOption = "Вариант 1",
-    Flag = "TestDropdown",
-    Callback = function(Option)
-        print("Выбран: " .. Option)
-    end,
-})
-
--- Текстовое поле ввода
-local TestInput = TestTab:CreateInput({
-    Name = "Текстовое поле",
-    PlaceholderText = "Введите текст...",
-    RemoveTextAfterFocusLost = false,
-    Flag = "TestInputField",
-    Callback = function(Text)
-        print("Введён текст: " .. Text)
-    end,
-})
-
--- Кнопка закрытия
-local CloseSection = TestTab:CreateSection("Управление интерфейсом")
-local CloseUIButton = TestTab:CreateButton({
-    Name = "Скрыть интерфейс",
-    Callback = function()
-        Rayfield:Destroy()
-        print("Интерфейс закрыт")
-    end,
-})
-
-local ToggleUIButton = TestTab:CreateButton({
-    Name = "Свернуть/развернуть",
-    Callback = function()
-        -- Rayfield не имеет встроенной функции сворачивания
-        Rayfield:Notify({
-            Title = "Информация",
-            Content = "Используйте горячую клавишу для скрытия",
-            Duration = 3,
-        })
-    end,
-})
-
--- ============================================
--- НАСТРОЙКА ИНТЕРФЕЙСА
--- ============================================
-
--- Устанавливаем горячую клавишу по умолчанию
+-- Настройка интерфейса
 Rayfield:SetHotkey("RightShift")
+Rayfield:SetWatermark("POLOHUB Items Manager")
 
--- Включаем водяной знак
-Rayfield:SetWatermark("POLOHUB Template")
+-- Финальная инициализация
+updateStatus()
 
--- Финальное сообщение в консоль
-print("=" .. string.rep("=", 50))
-print("  POLOHUB RAYFIELD TEMPLATE ЗАГРУЖЕН")
-print("  • Используйте RightShift для скрытия/показа")
-print("  • Это чистый шаблон без игровых функций")
-print("=" .. string.rep("=", 50))
-
--- Возвращаем объект Window, если нужно управлять им извне
-return Window
+print("======================================")
+print("POLOHUB ITEMS MANAGER LOADED")
+print("• " .. #AllYBAItems .. " items available")
+print("• Select items from dropdown")
+print("• Use RightShift to toggle UI")
+print("======================================")
