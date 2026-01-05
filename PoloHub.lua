@@ -1,134 +1,218 @@
 -- ============================================
--- POLOHUB MINIMAL GUI
--- Чистый Roblox UI, только основа
+-- POLOHUB - ШАБЛОН ИНТЕРФЕЙСА (Rayfield)
+-- Только структура меню, без игровых функций
 -- ============================================
 
--- Получаем необходимые сервисы
-local Players = game:GetService("Players")
-local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-local UserInputService = game:GetService("UserInputService")
+-- Загружаем Rayfield Interface Suite
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Создаём главный контейнер
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "PoloHubMain"
-MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)  -- Тёмно-серый
-MainFrame.BackgroundTransparency = 0.15  -- 15% прозрачности
-MainFrame.BorderSizePixel = 0
-MainFrame.Position = UDim2.new(0.05, 0, 0.05, 0)  -- Ближе к углу
-MainFrame.Size = UDim2.new(0, 250, 0, 300)  -- Компактный размер
-MainFrame.AnchorPoint = Vector2.new(0, 0)
-MainFrame.Parent = PlayerGui
-
--- Сглаженные углы
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
-UICorner.Parent = MainFrame
-
--- Тонкая обводка
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(70, 70, 70)
-UIStroke.Thickness = 1
-UIStroke.Parent = MainFrame
+-- Создаём главное окно
+local Window = Rayfield:CreateWindow({
+    Name = "POLOHUB INTERFACE",
+    LoadingTitle = "Загрузка интерфейса...",
+    LoadingSubtitle = "Чистый шаблон для изучения",
+    ConfigurationSaving = { Enabled = false }, -- Отключаем сохранение настроек
+    Discord = { Enabled = false },
+    KeySystem = false, -- Без системы ключей
+})
 
 -- ============================================
--- ЗАГОЛОВОК "polohub" в левом верхнем углу
+-- ВКЛАДКА 1: ГЛАВНОЕ МЕНЮ (демонстрация элементов)
 -- ============================================
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Name = "PolohubTitle"
-TitleLabel.Text = "polohub"
-TitleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)  -- Светло-серый
-TitleLabel.TextSize = 16
-TitleLabel.Font = Enum.Font.GothamSemibold
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Position = UDim2.new(0, 12, 0, 8)
-TitleLabel.Size = UDim2.new(0, 100, 0, 24)
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-TitleLabel.Parent = MainFrame
+local MainTab = Window:CreateTab("Главное", nil) -- nil = без иконки
+
+-- Секция 1: Кнопки
+local ButtonSection = MainTab:CreateSection("Примеры кнопок")
+
+local DemoButton1 = MainTab:CreateButton({
+    Name = "Кнопка 1 (простая)",
+    Callback = function()
+        print("Нажата простая кнопка")
+        -- Здесь будет ваша функция
+    end,
+})
+
+local DemoButton2 = MainTab:CreateButton({
+    Name = "Кнопка 2 (с уведомлением)",
+    Callback = function()
+        Rayfield:Notify({
+            Title = "Уведомление",
+            Content = "Это пример уведомления Rayfield",
+            Duration = 3,
+        })
+        print("Нажата кнопка с уведомлением")
+    end,
+})
+
+-- Секция 2: Переключатели
+local ToggleSection = MainTab:CreateSection("Примеры переключателей")
+
+local DemoToggle1 = MainTab:CreateToggle({
+    Name = "Переключатель 1",
+    CurrentValue = false,
+    Flag = "Toggle1Demo",
+    Callback = function(Value)
+        print("Переключатель 1: " .. (Value and "ВКЛ" or "ВЫКЛ"))
+        -- Здесь будет ваша функция при включении/выключении
+    end,
+})
+
+local DemoToggle2 = MainTab:CreateToggle({
+    Name = "Переключатель с сохранением",
+    CurrentValue = true,
+    Flag = "Toggle2Demo", -- Флаг для сохранения состояния
+    Callback = function(Value)
+        print("Сохранённый переключатель: " .. (Value and "ВКЛ" or "ВЫКЛ"))
+    end,
+})
+
+-- Секция 3: Слайдеры
+local SliderSection = MainTab:CreateSection("Примеры слайдеров")
+
+local DemoSlider = MainTab:CreateSlider({
+    Name = "Числовой слайдер",
+    Range = {0, 100},
+    Increment = 5,
+    Suffix = "ед.",
+    CurrentValue = 50,
+    Flag = "SliderDemo",
+    Callback = function(Value)
+        print("Значение слайдера: " .. Value)
+        -- Здесь будет ваша функция при изменении значения
+    end,
+})
 
 -- ============================================
--- БАЗОВАЯ КНОПКА (пример)
+-- ВКЛАДКА 2: НАСТРОЙКИ ИНТЕРФЕЙСА
 -- ============================================
-local ButtonFrame = Instance.new("Frame")
-ButtonFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ButtonFrame.BackgroundTransparency = 0.3
-ButtonFrame.BorderSizePixel = 0
-ButtonFrame.Position = UDim2.new(0.1, 0, 0.15, 0)
-ButtonFrame.Size = UDim2.new(0.8, 0, 0, 40)
-ButtonFrame.Parent = MainFrame
+local SettingsTab = Window:CreateTab("Настройки", nil)
 
-local ButtonCorner = Instance.new("UICorner")
-ButtonCorner.CornerRadius = UDim.new(0, 6)
-ButtonCorner.Parent = ButtonFrame
+-- Секция: Внешний вид
+local ThemeSection = SettingsTab:CreateSection("Внешний вид")
 
-local ButtonLabel = Instance.new("TextLabel")
-ButtonLabel.Text = "Кнопка"
-ButtonLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-ButtonLabel.TextSize = 14
-ButtonLabel.Font = Enum.Font.Gotham
-ButtonLabel.BackgroundTransparency = 1
-ButtonLabel.Size = UDim2.new(1, 0, 1, 0)
-ButtonLabel.Parent = ButtonFrame
+local ThemeToggle = SettingsTab:CreateToggle({
+    Name = "Тёмная тема",
+    CurrentValue = true,
+    Flag = "DarkThemeSetting",
+    Callback = function(Value)
+        if Value then
+            Window:SetTheme("Dark")
+        else
+            Window:SetTheme("Light")
+        end
+        print("Тема изменена на: " .. (Value and "Тёмную" or "Светлую"))
+    end,
+})
 
-local ButtonButton = Instance.new("TextButton")
-ButtonButton.Text = ""
-ButtonButton.BackgroundTransparency = 1
-ButtonButton.Size = UDim2.new(1, 0, 1, 0)
-ButtonButton.Parent = ButtonFrame
-
-ButtonButton.MouseButton1Click:Connect(function()
-    print("polohub: Кнопка нажата")
-end)
-
--- Эффект при наведении
-ButtonButton.MouseEnter:Connect(function()
-    ButtonFrame.BackgroundTransparency = 0.1
-end)
-
-ButtonButton.MouseLeave:Connect(function()
-    ButtonFrame.BackgroundTransparency = 0.3
-end)
-
--- ============================================
--- СИСТЕМА ПЕРЕТАСКИВАНИЯ (работает на телефоне)
--- ============================================
-local dragging = false
-local dragStart, startPos
-
-local function Update(input)
-    local delta = input.Position - dragStart
-    MainFrame.Position = UDim2.new(
-        startPos.X.Scale, 
-        startPos.X.Offset + delta.X,
-        startPos.Y.Scale, 
-        startPos.Y.Offset + delta.Y
-    )
-end
-
-MainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or 
-       input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
+local ColorPicker = SettingsTab:CreateColorPicker({
+    Name = "Цвет акцентов",
+    Color = Color3.fromRGB(40, 40, 40), -- Серый цвет
+    Flag = "AccentColorSetting",
+    Callback = function(Color)
+        Window:ChangeColor(Color)
+        print("Цвет акцентов изменён")
     end
-end)
+})
 
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.Touch or 
-                    input.UserInputType == Enum.UserInputType.MouseMovement) then
-        Update(input)
-    end
-end)
+-- Секция: Элементы управления
+local ControlSection = SettingsTab:CreateSection("Управление")
+
+local WatermarkToggle = SettingsTab:CreateToggle({
+    Name = "Водяной знак",
+    CurrentValue = true,
+    Flag = "WatermarkSetting",
+    Callback = function(Value)
+        Rayfield:SetWatermarkVisibility(Value)
+        print("Водяной знак: " .. (Value and "Показан" or "Скрыт"))
+    end,
+})
+
+local HotkeyButton = SettingsTab:CreateButton({
+    Name = "Сменить горячую клавишу",
+    Callback = function()
+        Rayfield:Notify({
+            Title = "Смена клавиши",
+            Content = "Нажмите новую клавишу...",
+            Duration = 2,
+        })
+        -- Rayfield сам запросит новую клавишу
+    end,
+})
+
+-- Секция: Информация
+local InfoSection = SettingsTab:CreateSection("Информация")
+
+local VersionLabel = SettingsTab:CreateLabel("PoloHub Template v1.0")
+local LibraryLabel = SettingsTab:CreateLabel("Rayfield Interface Suite")
+local InfoLabel = SettingsTab:CreateLabel("Этот шаблон - только для изучения")
 
 -- ============================================
--- ГОТОВО
+-- ВКЛАДКА 3: ТЕСТИРОВАНИЕ (дополнительные элементы)
 -- ============================================
-print("polohub: GUI загружено")
-print("• Перетаскивайте за любое место окна")
-print("• Надпись 'polohub' в левом верхнем углу")
+local TestTab = Window:CreateTab("Тесты", nil)
+
+local TestSection = TestTab:CreateSection("Другие элементы UI")
+
+-- Выпадающий список
+local TestDropdown = TestTab:CreateDropdown({
+    Name = "Пример списка",
+    Options = {"Вариант 1", "Вариант 2", "Вариант 3"},
+    CurrentOption = "Вариант 1",
+    Flag = "TestDropdown",
+    Callback = function(Option)
+        print("Выбран: " .. Option)
+    end,
+})
+
+-- Текстовое поле ввода
+local TestInput = TestTab:CreateInput({
+    Name = "Текстовое поле",
+    PlaceholderText = "Введите текст...",
+    RemoveTextAfterFocusLost = false,
+    Flag = "TestInputField",
+    Callback = function(Text)
+        print("Введён текст: " .. Text)
+    end,
+})
+
+-- Кнопка закрытия
+local CloseSection = TestTab:CreateSection("Управление интерфейсом")
+local CloseUIButton = TestTab:CreateButton({
+    Name = "Скрыть интерфейс",
+    Callback = function()
+        Rayfield:Destroy()
+        print("Интерфейс закрыт")
+    end,
+})
+
+local ToggleUIButton = TestTab:CreateButton({
+    Name = "Свернуть/развернуть",
+    Callback = function()
+        -- Rayfield не имеет встроенной функции сворачивания
+        Rayfield:Notify({
+            Title = "Информация",
+            Content = "Используйте горячую клавишу для скрытия",
+            Duration = 3,
+        })
+    end,
+})
+
+-- ============================================
+-- НАСТРОЙКА ИНТЕРФЕЙСА
+-- ============================================
+
+-- Устанавливаем горячую клавишу по умолчанию
+Rayfield:SetHotkey("RightShift")
+
+-- Включаем водяной знак
+Rayfield:SetWatermark("POLOHUB Template")
+
+-- Финальное сообщение в консоль
+print("=" .. string.rep("=", 50))
+print("  POLOHUB RAYFIELD TEMPLATE ЗАГРУЖЕН")
+print("  • Используйте RightShift для скрытия/показа")
+print("  • Это чистый шаблон без игровых функций")
+print("=" .. string.rep("=", 50))
+
+-- Возвращаем объект Window, если нужно управлять им извне
+return Window
