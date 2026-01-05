@@ -1,249 +1,134 @@
 -- ============================================
--- ПОЛНАЯ ДИАГНОСТИКА СКРИПТА POLOHUB
+-- POLOHUB MINIMAL GUI
+-- Чистый Roblox UI, только основа
 -- ============================================
 
-print("🔍 Начинаю диагностику POLOHUB GUI...")
-print("═" .. string.rep("═", 50))
+-- Получаем необходимые сервисы
+local Players = game:GetService("Players")
+local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+local UserInputService = game:GetService("UserInputService")
 
--- 1. ПРОВЕРКА ССЫЛКИ И ЗАГРУЗКИ
-local test_url = "https://raw.githubusercontent.com/polopolka211/PolopoHub/refs/heads/main/PoloHub.lua"
-print("[1/5] Проверяю доступ к файлу GitHub...")
-print("📎 URL:", test_url)
+-- Создаём главный контейнер
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "PoloHubMain"
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)  -- Тёмно-серый
+MainFrame.BackgroundTransparency = 0.15  -- 15% прозрачности
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.05, 0, 0.05, 0)  -- Ближе к углу
+MainFrame.Size = UDim2.new(0, 250, 0, 300)  -- Компактный размер
+MainFrame.AnchorPoint = Vector2.new(0, 0)
+MainFrame.Parent = PlayerGui
 
-local content, http_error
-local http_success, http_result = pcall(function()
-    return game:HttpGet(test_url, true) -- true = асинхронный запрос
+-- Сглаженные углы
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+-- Тонкая обводка
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(70, 70, 70)
+UIStroke.Thickness = 1
+UIStroke.Parent = MainFrame
+
+-- ============================================
+-- ЗАГОЛОВОК "polohub" в левом верхнем углу
+-- ============================================
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Name = "PolohubTitle"
+TitleLabel.Text = "polohub"
+TitleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)  -- Светло-серый
+TitleLabel.TextSize = 16
+TitleLabel.Font = Enum.Font.GothamSemibold
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Position = UDim2.new(0, 12, 0, 8)
+TitleLabel.Size = UDim2.new(0, 100, 0, 24)
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = MainFrame
+
+-- ============================================
+-- БАЗОВАЯ КНОПКА (пример)
+-- ============================================
+local ButtonFrame = Instance.new("Frame")
+ButtonFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ButtonFrame.BackgroundTransparency = 0.3
+ButtonFrame.BorderSizePixel = 0
+ButtonFrame.Position = UDim2.new(0.1, 0, 0.15, 0)
+ButtonFrame.Size = UDim2.new(0.8, 0, 0, 40)
+ButtonFrame.Parent = MainFrame
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(0, 6)
+ButtonCorner.Parent = ButtonFrame
+
+local ButtonLabel = Instance.new("TextLabel")
+ButtonLabel.Text = "Кнопка"
+ButtonLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+ButtonLabel.TextSize = 14
+ButtonLabel.Font = Enum.Font.Gotham
+ButtonLabel.BackgroundTransparency = 1
+ButtonLabel.Size = UDim2.new(1, 0, 1, 0)
+ButtonLabel.Parent = ButtonFrame
+
+local ButtonButton = Instance.new("TextButton")
+ButtonButton.Text = ""
+ButtonButton.BackgroundTransparency = 1
+ButtonButton.Size = UDim2.new(1, 0, 1, 0)
+ButtonButton.Parent = ButtonFrame
+
+ButtonButton.MouseButton1Click:Connect(function()
+    print("polohub: Кнопка нажата")
 end)
 
-if http_success then
-    content = http_result
-    print("✅ Файл успешно загружен")
-    print("   📏 Размер:", #content, "символов")
-    print("   🔠 Первые 100 символов:", string.sub(content, 1, 100) .. "...")
-else
-    http_error = http_result
-    print("❌ ОШИБКА ЗАГРУЗКИ ФАЙЛА!")
-    print("   🚫 Тип ошибки:", type(http_error))
-    print("   📄 Сообщение:", tostring(http_error))
-    
-    -- Попробуем альтернативную ссылку
-    print("   🔄 Пробую альтернативный формат ссылки...")
-    local alt_url = "https://raw.githubusercontent.com/polopolka211/PolopoHub/main/PoloHub.lua"
-    local alt_success, alt_content = pcall(game.HttpGet, game, alt_url)
-    if alt_success then
-        print("   ✅ Альтернативная ссылка сработала!")
-        content = alt_content
-        test_url = alt_url
-    else
-        print("   ❌ Альтернативная ссылка тоже не работает")
-        print("   💡 Рекомендация: проверьте, публичный ли репозиторий PolopoHub")
-        print("      Откройте в браузере: https://github.com/polopolka211/PolopoHub")
-        print("      Если не видите кода, в Settings → General сделайте репозиторий Public")
-        return
-    end
-end
-
-print("═" .. string.rep("═", 50))
-
--- 2. ПРОВЕРКА СИНТАКСИСА LUA
-print("[2/5] Анализирую синтаксис Lua...")
-
-local chunk, parse_error = loadstring(content, "PoloHubGUI")
-
-if chunk then
-    print("✅ Синтаксис корректный")
-    
-    -- Проверяем, какие глобальные переменные создаст скрипт
-    local env = {
-        print = function(...)
-            local args = {...}
-            local result = ""
-            for i = 1, select('#', ...) do
-                result = result .. tostring(args[i]) .. "\t"
-            end
-            print("   [СКРИПТ]:", result)
-        end,
-        wait = task.wait,
-        game = game,
-        Color3 = Color3,
-        UDim2 = UDim2,
-        Vector2 = Vector2,
-        Enum = Enum,
-        Instance = Instance,
-        task = task
-    }
-    
-    setfenv(chunk, env)
-    
-else
-    print("❌ ОШИБКА СИНТАКСИСА!")
-    print("   📍 Позиция ошибки:", parse_error)
-    
-    -- Пытаемся найти строку с ошибкой
-    if type(parse_error) == "string" then
-        local line_num = parse_error:match(":(%d+):")
-        if line_num then
-            line_num = tonumber(line_num)
-            local lines = {}
-            for line in content:gmatch("[^\n]+") do
-                table.insert(lines, line)
-            end
-            if lines[line_num] then
-                print("   📝 Строка " .. line_num .. ":", lines[line_num])
-            end
-        end
-    end
-    return
-end
-
-print("═" .. string.rep("═", 50))
-
--- 3. ВЫПОЛНЕНИЕ СКРИПТА В ЗАЩИЩЕННОМ РЕЖИМЕ
-print("[3/5] Выполняю скрипт в защищенном режиме...")
-
-local exec_success, exec_error = pcall(function()
-    -- Создаем песочницу для безопасного выполнения
-    local sandbox = {
-        print = print,
-        warn = warn,
-        error = error,
-        pcall = pcall,
-        xpcall = xpcall,
-        select = select,
-        type = type,
-        tostring = tostring,
-        tonumber = tonumber,
-        pairs = pairs,
-        ipairs = ipairs,
-        next = next,
-        unpack = unpack,
-        table = table,
-        string = string,
-        math = math,
-        coroutine = coroutine,
-        _VERSION = _VERSION,
-        
-        -- Roblox API (ограниченный набор)
-        game = game,
-        workspace = workspace,
-        Players = game:GetService("Players"),
-        CoreGui = game:GetService("CoreGui"),
-        UserInputService = game:GetService("UserInputService"),
-        TweenService = game:GetService("TweenService"),
-        
-        -- Roblox типы
-        Color3 = Color3,
-        UDim2 = UDim2,
-        Vector2 = Vector2,
-        Vector3 = Vector3,
-        CFrame = CFrame,
-        Enum = Enum,
-        Instance = Instance,
-        BrickColor = BrickColor,
-        
-        -- Безопасные аналоги
-        spawn = task.spawn,
-        delay = task.delay,
-        wait = task.wait,
-        
-        -- Ограничения
-        getfenv = function() return sandbox end,
-        setfenv = function(f, env) return f end,
-        loadstring = function() error("loadstring disabled in sandbox") end,
-        require = function() error("require disabled in sandbox") end,
-        _G = sandbox
-    }
-    
-    setfenv(chunk, sandbox)
-    return chunk()
+-- Эффект при наведении
+ButtonButton.MouseEnter:Connect(function()
+    ButtonFrame.BackgroundTransparency = 0.1
 end)
 
-if exec_success then
-    print("✅ Скрипт выполнен без критических ошибок")
-    print("   💡 Возможно, GUI создано, но невидимо или находится вне экрана")
-else
-    print("❌ ОШИБКА ВЫПОЛНЕНИЯ СКРИПТА!")
-    print("   📄 Сообщение:", tostring(exec_error))
-    
-    -- Анализируем распространенные ошибки
-    local err_msg = tostring(exec_error):lower()
-    
-    if err_msg:find("attempt to index") then
-        print("   🔍 Возможно, не хватает Roblox-сервиса")
-    elseif err_msg:find("invalid argument") then
-        print("   🔍 Проблема с аргументами функции")
-    elseif err_msg:find("expected") then
-        print("   🔍 Ожидался другой тип данных")
-    elseif err_msg:find("cannot create instance") then
-        print("   🔍 Проблема с созданием Roblox-объектов")
-    end
-    
-    -- Выводим стек вызовов
-    print("   📊 Трассировка стека:")
-    local trace = debug.traceback(exec_error, 2)
-    for line in trace:gmatch("[^\n]+") do
-        print("      " .. line)
-    end
+ButtonButton.MouseLeave:Connect(function()
+    ButtonFrame.BackgroundTransparency = 0.3
+end)
+
+-- ============================================
+-- СИСТЕМА ПЕРЕТАСКИВАНИЯ (работает на телефоне)
+-- ============================================
+local dragging = false
+local dragStart, startPos
+
+local function Update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(
+        startPos.X.Scale, 
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale, 
+        startPos.Y.Offset + delta.Y
+    )
 end
 
-print("═" .. string.rep("═", 50))
-
--- 4. ПРОВЕРКА ДОСТУПА К ИГРОВЫМ СЕРВИСАМ
-print("[4/5] Проверяю доступ к необходимым сервисам...")
-
-local required_services = {
-    "Players",
-    "CoreGui", 
-    "UserInputService",
-    "TweenService",
-    "Workspace"
-}
-
-local all_services_ok = true
-for _, service_name in ipairs(required_services) do
-    local success, service = pcall(game.GetService, game, service_name)
-    if success and service then
-        print("   ✅ " .. service_name .. " — доступен")
-    else
-        print("   ❌ " .. service_name .. " — НЕ доступен")
-        all_services_ok = false
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or 
+       input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
-end
+end)
 
-if not all_services_ok then
-    print("   ⚠️  Отсутствуют некоторые сервисы. Это может быть причиной.")
-end
-
-print("═" .. string.rep("═", 50))
-
--- 5. ЗАПУСК ПОЛНОЙ ВЕРСИИ СКРИПТА (если все проверки пройдены)
-print("[5/5] Пробую запустить оригинальный скрипт...")
-
-if content and chunk and all_services_ok then
-    print("🚀 Запускаю POLOHUB GUI...")
-    
-    -- Запускаем оригинальный код
-    local final_success, final_error = pcall(function()
-        local func = loadstring(content, "PoloHubFinal")
-        if func then
-            func()
-        end
-    end)
-    
-    if final_success then
-        print("========================================")
-        print("🎉 POLOHUB GUI УСПЕШНО ЗАПУЩЕН!")
-        print("========================================")
-        print("💡 Если окно не видно, попробуйте:")
-        print("   1. Нажать RightControl для показа/скрытия")
-        print("   2. Проверить, что скрипт выполняется в правильном контексте")
-    else
-        print("❌ ФИНАЛЬНАЯ ОШИБКА ПРИ ЗАПУСКЕ:")
-        print("   " .. tostring(final_error))
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.Touch or 
+                    input.UserInputType == Enum.UserInputType.MouseMovement) then
+        Update(input)
     end
-else
-    print("⚠️  Пропускаю финальный запуск из-за предыдущих ошибок")
-end
+end)
 
-print("═" .. string.rep("═", 50))
-print("🔚 Диагностика завершена")
+-- ============================================
+-- ГОТОВО
+-- ============================================
+print("polohub: GUI загружено")
+print("• Перетаскивайте за любое место окна")
+print("• Надпись 'polohub' в левом верхнем углу")
