@@ -1,167 +1,333 @@
 -- ============================================
--- ПРОСТОЙ ТЕЛЕПОРТ ПО ВСЕМ ОБЪЕКТАМ (ПОДЗЕМНЫЙ)
+-- POLOHUB - COMPLETE VERSION
+-- Rayfield UI + Item Selection + Underground Teleport
 -- ============================================
 
-local TeleportService = {
-    IsTeleporting = false,
-    TeleportConnection = nil,
-    UndergroundDepth = -15, -- Глубина под землей
-    TeleportDelay = 0.5, -- Задержка между телепортами
-    MaxDistance = 8 -- Максимальная дистанция для подбора
+-- Загружаем Rayfield
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- Создаём окно
+local Window = Rayfield:CreateWindow({
+    Name = "POLOHUB | ITEMS",
+    LoadingTitle = "Загрузка менеджера предметов...",
+    LoadingSubtitle = "by polopolka211",
+    ConfigurationSaving = { Enabled = true },
+    Discord = { Enabled = false },
+    KeySystem = false,
+})
+
+-- ============================================
+-- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+-- ============================================
+local SelectedItems = {}
+local IsFarming = false
+local UndergroundTeleport = {
+    Enabled = false,
+    Connection = nil,
+    Depth = -15,
+    Delay = 0.3,
+    MaxDistance = 8
 }
 
--- Получаем путь к объектам
-local function getItemsPath()
-    -- Пробуем разные варианты написания
-    local paths = {
-        workspace:FindFirstChild("Item_Spawns"),
-        workspace:FindFirstChild("Item_spawns"),
-        workspace:FindFirstChild("ItemSpawns")
-    }
-    
-    for _, path in pairs(paths) do
-        if path and path:FindFirstChild("Items") then
-            return path:FindFirstChild("Items")
+-- ============================================
+-- СПИСОК ПРЕДМЕТОВ YBA
+-- ============================================
+local AllYBAItems = {
+    "Mysterious Arrow",
+    "Rokakaka Fruit", 
+    "Diamond",
+    "Gold Coin",
+    "Quinton's Glove",
+    "Steel Ball",
+    "Ancient Scroll",
+    "Rib Cage of The Saint Corpse",
+    "Dio's Diary",
+    "Stone Mask",
+    "Lucky Arrow",
+    "Christmas Present",
+    "Caesar's Headband",
+    "Pure Rokakaka",
+    "Clackers",
+    "Lucky Stone Mask",
+    "Zepelli's Hat"
+}
+
+-- ============================================
+-- ВКЛАДКА ITEMS (ВЫБОР ПРЕДМЕТОВ)
+-- ============================================
+local ItemsTab = Window:CreateTab("Items", nil)
+local FarmSection = ItemsTab:CreateSection("Items to Farm")
+
+-- Выпадающий список выбора предметов
+local ItemsDropdown = ItemsTab:CreateDropdown({
+    Name = "Items to Farm",
+    Options = AllYBAItems,
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "YBA_Items_Selection",
+    Callback = function(SelectedOptions)
+        SelectedItems = SelectedOptions
+        updateStatus()
+        
+        if #SelectedOptions > 0 then
+            Rayfield:Notify({
+                Title = "Items Selected",
+                Content = "Selected " .. #SelectedOptions .. " items",
+                Duration = 2,
+            })
+            
+            print("=== SELECTED ITEMS ===")
+            for i, item in ipairs(SelectedOptions) do
+                print(i .. ". " .. item)
+            end
+            print("======================")
+        else
+            print("No items selected")
         end
-    end
+    end,
+})
+
+-- Секция быстрого выбора
+local SelectionSection = ItemsTab:CreateSection("Quick Selection")
+
+local SelectAllButton = ItemsTab:CreateButton({
+    Name = "Select All Items",
+    Callback = function()
+        ItemsDropdown:Set(AllYBAItems)
+        print("All items selected")
+    end,
+})
+
+local ClearAllButton = ItemsTab:CreateButton({
+    Name = "Clear Selection",
+    Callback = function()
+        ItemsDropdown:Set({})
+        print("Selection cleared")
+    end,
+})
+
+-- ============================================
+-- СЕКЦИЯ ТЕЛЕПОРТАЦИИ (В ТОЙ ЖЕ ВКЛАДКЕ)
+-- ============================================
+local TeleportSection = ItemsTab:CreateSection("Underground Teleport")
+
+-- Кнопка телепортации
+local TeleportButton = ItemsTab:CreateButton({
+    Name = "📍 Start Underground Teleport",
+    Callback = function()
+        if UndergroundTeleport.Enabled then
+            -- Останавливаем телепорт
+            UndergroundTeleport.Stop()
+            TeleportButton:Set("📍 Start Underground Teleport")
+            
+            Rayfield:Notify({
+                Title = "Teleport Stopped",
+                Content = "Underground teleportation disabled",
+                Duration = 2,
+            })
+        else
+            -- Запускаем телепорт
+            UndergroundTeleport.Start()
+            TeleportButton:Set("⏹️ Stop Teleport")
+            
+            Rayfield:Notify({
+                Title = "Teleport Active",
+                Content = "Moving under all objects",
+                Duration = 2,
+            })
+        end
+        updateTeleportStatus()
+    end,
+})
+
+-- Слайдер глубины
+local DepthSlider = ItemsTab:CreateSlider({
+    Name = "Teleport Depth",
+    Range = {5, 30},
+    Increment = 1,
+    Suffix = " studs",
+    CurrentValue = math.abs(UndergroundTeleport.Depth),
+    Flag = "TeleportDepth",
+    Callback = function(Value)
+        UndergroundTeleport.Depth = -Value
+        print("[Teleport] Depth set: " .. Value .. " studs")
+    end,
+})
+
+-- Слайдер задержки
+local DelaySlider = ItemsTab:CreateSlider({
+    Name = "Teleport Delay",
+    Range = {0.1, 1.0},
+    Increment = 0.1,
+    Suffix = " sec",
+    CurrentValue = UndergroundTeleport.Delay,
+    Flag = "TeleportDelay",
+    Callback = function(Value)
+        UndergroundTeleport.Delay = Value
+        print("[Teleport] Delay set: " .. Value .. " sec")
+    end,
+})
+
+-- ============================================
+-- ИНФОРМАЦИОННАЯ СЕКЦИЯ
+-- ============================================
+local InfoSection = ItemsTab:CreateSection("Information")
+
+local StatusLabel = ItemsTab:CreateLabel("Status: Ready")
+local SelectedCountLabel = ItemsTab:CreateLabel("Selected: 0 items")
+local TeleportStatusLabel = ItemsTab:CreateLabel("Teleport: 🔴 OFF")
+
+-- ============================================
+-- ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА
+-- ============================================
+local function updateStatus()
+    local count = #SelectedItems
+    SelectedCountLabel:Set("Selected: " .. count .. " item" .. (count == 1 and "" or "s"))
     
-    warn("[!] Не найден путь Item_Spawns/Items")
-    return nil
+    if count > 0 then
+        StatusLabel:Set("Status: Ready (" .. count .. " selected)")
+    else
+        StatusLabel:Set("Status: Ready")
+    end
 end
 
--- Найти ВСЕ модели с промптами
-local function findAllItemModels()
-    local itemsFolder = getItemsPath()
-    if not itemsFolder then return {} end
+local function updateTeleportStatus()
+    if UndergroundTeleport.Enabled then
+        TeleportStatusLabel:Set("Teleport: 🟢 ACTIVE")
+        TeleportStatusLabel.TextColor3 = Color3.fromRGB(0, 200, 0)
+    else
+        TeleportStatusLabel:Set("Teleport: 🔴 OFF")
+        TeleportStatusLabel.TextColor3 = Color3.fromRGB(200, 50, 50)
+    end
+end
+
+-- ============================================
+-- МОДУЛЬ ПОДЗЕМНОЙ ТЕЛЕПОРТАЦИИ
+-- ============================================
+
+-- Функция поиска всех точек телепортации
+local function findAllTeleportPoints()
+    local spawnsFolder = workspace:FindFirstChild("Item_Spawns") 
+                      or workspace:FindFirstChild("Item_spawns")
     
-    local allModels = {}
+    if not spawnsFolder then
+        print("[Teleport] Item_Spawns not found")
+        return {}
+    end
     
-    -- Рекурсивно ищем все модели
-    local function scanForModels(parent)
+    local itemsFolder = spawnsFolder:FindFirstChild("Items")
+    if not itemsFolder then
+        print("[Teleport] Items folder not found")
+        return {}
+    end
+    
+    local teleportPoints = {}
+    
+    local function scanForPoints(parent)
         for _, child in pairs(parent:GetChildren()) do
             if child:IsA("Model") then
-                -- Проверяем, есть ли в модели ProximityPrompt
                 local prompt = child:FindFirstChildWhichIsA("ProximityPrompt")
                 if prompt then
-                    table.insert(allModels, {
+                    table.insert(teleportPoints, {
                         Model = child,
-                        Prompt = prompt,
                         Position = child:GetPivot().Position
                     })
                 end
-                
-                -- Рекурсивно проверяем вложенные модели
-                scanForModels(child)
+                scanForPoints(child)
             end
         end
     end
     
-    scanForModels(itemsFolder)
-    return allModels
+    scanForPoints(itemsFolder)
+    return teleportPoints
 end
 
--- Подземный телепорт к координатам
-local function undergroundTeleportTo(position)
-    local player = game.Players.LocalPlayer
-    local character = player.Character
+-- Подземный телепорт к точке
+local function teleportToPoint(pointPosition)
+    local character = game.Players.LocalPlayer.Character
     if not character then return false end
     
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart then return false end
     
-    -- Позиция под объектом
     local undergroundPos = Vector3.new(
-        position.X,
-        position.Y + TeleportService.UndergroundDepth,
-        position.Z
+        pointPosition.X,
+        pointPosition.Y + UndergroundTeleport.Depth,
+        pointPosition.Z
     )
     
-    -- Поворачиваемся лицом к объекту
-    local lookAt = CFrame.lookAt(undergroundPos, position)
-    
-    -- Телепорт
-    humanoidRootPart.CFrame = lookAt
-    
-    print(string.format("[→] Телепорт: X=%.1f, Y=%.1f, Z=%.1f", 
-        undergroundPos.X, undergroundPos.Y, undergroundPos.Z))
-    
+    humanoidRootPart.CFrame = CFrame.lookAt(undergroundPos, pointPosition)
     return true
 end
 
+-- Проверка дистанции
+local function checkPickupDistance(objectPosition)
+    local character = game.Players.LocalPlayer.Character
+    if not character then return 0 end
+    
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return 0 end
+    
+    return (hrp.Position - objectPosition).Magnitude
+end
+
 -- Основной цикл телепортации
-local function teleportLoop()
-    if not TeleportService.IsTeleporting then return end
+local function teleportationLoop()
+    if not UndergroundTeleport.Enabled then return end
     
-    -- Находим все модели
-    local allModels = findAllItemModels()
-    
-    if #allModels == 0 then
-        print("[!] Модели не найдены")
+    local points = findAllTeleportPoints()
+    if #points == 0 then
         task.wait(2)
         return
     end
     
-    print("[📊] Найдено объектов: " .. #allModels)
+    print("[Teleport] Points found: " .. #points)
     
-    -- Телепортируемся под каждый объект
-    for i, modelData in pairs(allModels) do
-        if not TeleportService.IsTeleporting then break end
+    for i, point in pairs(points) do
+        if not UndergroundTeleport.Enabled then break end
         
-        print(string.format("[%d/%d] Телепорт к объекту...", i, #allModels))
+        print(string.format("[Teleport] %d/%d", i, #points))
         
-        -- Телепортируемся
-        if undergroundTeleportTo(modelData.Position) then
-            -- Ждем нужную дистанцию для подбора (8 studs)
-            task.wait(0.3)
+        if teleportToPoint(point.Position) then
+            task.wait(0.2)
             
-            -- Проверяем дистанцию
-            local character = game.Players.LocalPlayer.Character
-            if character then
-                local hrp = character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    local distance = (hrp.Position - modelData.Position).Magnitude
-                    print(string.format("   📏 Дистанция: %.1f studs", distance))
-                    
-                    if distance <= TeleportService.MaxDistance then
-                        print("   ✅ В радиусе подбора (8 studs)")
-                    else
-                        print("   ⚠️  Слишком далеко")
-                    end
-                end
+            local distance = checkPickupDistance(point.Position)
+            print(string.format("[Teleport] Distance: %.1f studs", distance))
+            
+            if distance <= UndergroundTeleport.MaxDistance then
+                print("[Teleport] ✓ In pickup range")
             end
             
-            -- Ждем перед следующим телепортом
-            task.wait(TeleportService.TeleportDelay)
+            task.wait(UndergroundTeleport.Delay)
         end
     end
     
-    print("[✓] Цикл телепортации завершен")
+    print("[Teleport] Cycle complete")
 end
 
 -- Запуск телепортации
-function TeleportService:StartTeleporting()
-    if self.IsTeleporting then
-        print("[!] Телепортация уже запущена")
+function UndergroundTeleport.Start()
+    if UndergroundTeleport.Enabled then
+        print("[Teleport] Already running")
         return false
     end
     
-    self.IsTeleporting = true
+    UndergroundTeleport.Enabled = true
     
-    print("=" .. string.rep("=", 50))
-    print("🚀 ЗАПУСК ТЕЛЕПОРТАЦИИ")
-    print("Глубина: " .. math.abs(self.UndergroundDepth) .. " studs под землей")
-    print("Дистанция подбора: " .. self.MaxDistance .. " studs")
-    print("=" .. string.rep("=", 50))
+    print("=" .. string.rep("=", 40))
+    print("🚀 UNDERGROUND TELEPORT STARTED")
+    print("Depth: " .. math.abs(UndergroundTeleport.Depth) .. " studs")
+    print("Target distance: " .. UndergroundTeleport.MaxDistance .. " studs")
+    print("=" .. string.rep("=", 40))
     
-    -- Запускаем цикл
-    self.TeleportConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if self.IsTeleporting then
-            teleportLoop()
-            task.wait(1) -- Пауза между полными циклами
+    UndergroundTeleport.Connection = game:GetService("RunService").Heartbeat:Connect(function()
+        if UndergroundTeleport.Enabled then
+            teleportationLoop()
+            task.wait(0.5)
         else
-            if self.TeleportConnection then
-                self.TeleportConnection:Disconnect()
-                self.TeleportConnection = nil
+            if UndergroundTeleport.Connection then
+                UndergroundTeleport.Connection:Disconnect()
+                UndergroundTeleport.Connection = nil
             end
         end
     end)
@@ -170,126 +336,36 @@ function TeleportService:StartTeleporting()
 end
 
 -- Остановка телепортации
-function TeleportService:StopTeleporting()
-    if not self.IsTeleporting then return end
+function UndergroundTeleport.Stop()
+    if not UndergroundTeleport.Enabled then return end
     
-    self.IsTeleporting = false
+    UndergroundTeleport.Enabled = false
     
-    if self.TeleportConnection then
-        self.TeleportConnection:Disconnect()
-        self.TeleportConnection = nil
+    if UndergroundTeleport.Connection then
+        UndergroundTeleport.Connection:Disconnect()
+        UndergroundTeleport.Connection = nil
     end
     
-    print("=" .. string.rep("=", 50))
-    print("🛑 ТЕЛЕПОРТАЦИЯ ОСТАНОВЛЕНА")
-    print("=" .. string.rep("=", 50))
+    print("=" .. string.rep("=", 40))
+    print("🛑 TELEPORT STOPPED")
+    print("=" .. string.rep("=", 40))
 end
 
 -- ============================================
--- ИНТЕГРАЦИЯ С RAYFIELD UI
+-- ИНИЦИАЛИЗАЦИЯ И НАСТРОЙКА
 -- ============================================
 
--- ДОБАВЬТЕ В ВАШ КОД RAYFIELD:
-
--- 1. Создайте новую вкладку для телепортации
-local TeleportTab = Window:CreateTab("Teleport", nil)
-local TeleportSection = TeleportTab:CreateSection("Подземная телепортация")
-
--- 2. Кнопка запуска/остановки телепортации
-local TeleportButton = TeleportTab:CreateButton({
-    Name = "🔄 Начать подземную телепортацию",
-    Callback = function()
-        if TeleportService.IsTeleporting then
-            -- Останавливаем
-            TeleportService:StopTeleporting()
-            TeleportButton:Set("🔄 Начать подземную телепортацию")
-            
-            Rayfield:Notify({
-                Title = "Телепортация остановлена",
-                Content = "Прекращено перемещение по объектам",
-                Duration = 2,
-            })
-        else
-            -- Запускаем
-            local success = TeleportService:StartTeleporting()
-            
-            if success then
-                TeleportButton:Set("⏹️ Остановить телепортацию")
-                
-                Rayfield:Notify({
-                    Title = "Телепортация запущена",
-                    Content = "Перемещение под всеми объектами",
-                    Duration = 3,
-                })
-            end
-        end
-    end,
-})
-
--- 3. Слайдер для настройки глубины
-local DepthSlider = TeleportTab:CreateSlider({
-    Name = "Глубина под землей",
-    Range = {5, 30},
-    Increment = 1,
-    Suffix = " studs",
-    CurrentValue = math.abs(TeleportService.UndergroundDepth),
-    Flag = "UndergroundDepth",
-    Callback = function(Value)
-        TeleportService.UndergroundDepth = -Value -- Отрицательное значение (под землей)
-        print("Глубина установлена: " .. Value .. " studs")
-    end,
-})
-
--- 4. Слайдер для дистанции подбора
-local DistanceSlider = TeleportTab:CreateSlider({
-    Name = "Дистанция подбора",
-    Range = {5, 15},
-    Increment = 1,
-    Suffix = " studs",
-    CurrentValue = TeleportService.MaxDistance,
-    Flag = "PickupDistance",
-    Callback = function(Value)
-        TeleportService.MaxDistance = Value
-        print("Дистанция подбора: " .. Value .. " studs")
-    end,
-})
-
--- 5. Информационная панель
-local InfoSection = TeleportTab:CreateSection("Информация")
-local StatusLabel = TeleportTab:CreateLabel("Статус: Остановлено")
-local ObjectsLabel = TeleportTab:CreateLabel("Объектов: 0")
-
--- Функция обновления статуса
-local function updateTeleportStatus()
-    if TeleportService.IsTeleporting then
-        StatusLabel:Set("Статус: 📍 Телепортация активна")
-        StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 0)
-    else
-        StatusLabel:Set("Статус: ⏸️ Остановлено")
-        StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    end
-end
-
--- 6. Кнопка быстрой проверки объектов
-local CheckObjectsButton = TeleportTab:CreateButton({
-    Name = "🔍 Проверить объекты",
-    Callback = function()
-        local models = findAllItemModels()
-        ObjectsLabel:Set("Объектов: " .. #models)
-        
-        Rayfield:Notify({
-            Title = "Проверка объектов",
-            Content = "Найдено: " .. #models .. " моделей с промптами",
-            Duration = 3,
-        })
-        
-        print("[📊] Статистика объектов:")
-        for i, model in pairs(models) do
-            print(string.format("  %d. Pos: (%.1f, %.1f, %.1f)", 
-                i, model.Position.X, model.Position.Y, model.Position.Z))
-        end
-    end,
-})
+-- Настройка Rayfield
+Rayfield:SetHotkey("RightShift")
+Rayfield:SetWatermark("POLOHUB Items Manager")
 
 -- Инициализация
+updateStatus()
 updateTeleportStatus()
+
+print("======================================")
+print("POLOHUB MANAGER LOADED")
+print("• " .. #AllYBAItems .. " items available")
+print("• Select items from dropdown")
+print("• Use RightShift to toggle UI")
+print("======================================")
