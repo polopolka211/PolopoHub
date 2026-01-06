@@ -1,34 +1,29 @@
 -- ============================================
--- POLOHUB - COMPLETE VERSION (FIXED)
--- Rayfield UI + Item Selection + Underground Teleport
+-- POLOHUB - WISTERIA VERSION
+-- Полный перенос с Rayfield на Wisteria
 -- ============================================
 
--- Загружаем Rayfield
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- Загружаем Wisteria вместо Rayfield
+local Wisteria = loadstring(game:HttpGet("https://raw.githubusercontent.com/BatsAndCode/Wisteria/main/source.lua"))()
 
--- Создаём окно
-local Window = Rayfield:CreateWindow({
-    Name = "POLOHUB | ITEMS",
-    LoadingTitle = "Загрузка менеджера предметов...",
-    LoadingSubtitle = "by polopolka211",
-    ConfigurationSaving = { Enabled = true },
-    Discord = { Enabled = false },
-    KeySystem = false,
+-- Создаём главное окно Wisteria
+local Window = Wisteria:CreateWindow({
+    Title = "POLOHUB | ITEMS",
+    SubTitle = "by polopolka211",
+    Size = UDim2.new(0, 500, 0, 450), -- Размер окна
+    Theme = "Dark" -- Тема: Dark, Light, Blue, Red
 })
 
 -- ============================================
 -- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
 -- ============================================
 local SelectedItems = {}
-local IsFarming = false
-
--- МОДУЛЬ ТЕЛЕПОРТАЦИИ (исправленный)
 local UndergroundTeleport = {
     Enabled = false,
     Connection = nil,
-    Depth = -8,  -- ФИКС: изначально 8 studs
+    Depth = -8,
     Delay = 0.3,
-    MaxDepth = 8 -- ФИКС: максимум 8 studs
+    MaxDepth = 8
 }
 
 -- ============================================
@@ -55,29 +50,32 @@ local AllYBAItems = {
 }
 
 -- ============================================
--- ВКЛАДКА ITEMS (ВЫБОР ПРЕДМЕТОВ)
+-- ГЛАВНАЯ ВКЛАДКА (ITEMS)
 -- ============================================
-local ItemsTab = Window:CreateTab("Items", nil)
+local ItemsTab = Window:AddTab({
+    Name = "Items"
+})
 
 -- Секция выбора предметов
-local FarmSection = ItemsTab:CreateSection("Items to Farm")
+ItemsTab:AddSection({
+    Name = "Items to Farm"
+})
 
--- Выпадающий список выбора предметов
-local ItemsDropdown = ItemsTab:CreateDropdown({
-    Name = "Items to Farm",
+-- Выпадающий список выбора предметов (мультивыбор)
+local ItemsDropdown = ItemsTab:AddDropdown({
+    Name = "Select Items",
     Options = AllYBAItems,
-    CurrentOption = {},
-    MultipleOptions = true,
-    Flag = "YBA_Items_Selection",
+    Multi = true, -- Мультивыбор
+    Default = {}, -- Пустой по умолчанию
     Callback = function(SelectedOptions)
         SelectedItems = SelectedOptions
         updateStatus()
         
         if #SelectedOptions > 0 then
-            Rayfield:Notify({
+            Window:Notify({
                 Title = "Items Selected",
                 Content = "Selected " .. #SelectedOptions .. " items",
-                Duration = 2,
+                Duration = 2
             })
             
             print("=== SELECTED ITEMS ===")
@@ -88,116 +86,126 @@ local ItemsDropdown = ItemsTab:CreateDropdown({
         else
             print("No items selected")
         end
-    end,
+    end
 })
 
 -- Секция быстрого выбора
-local SelectionSection = ItemsTab:CreateSection("Quick Selection")
+ItemsTab:AddSection({
+    Name = "Quick Selection"
+})
 
-local SelectAllButton = ItemsTab:CreateButton({
+-- Кнопка выбора всех
+ItemsTab:AddButton({
     Name = "Select All Items",
     Callback = function()
         ItemsDropdown:Set(AllYBAItems)
         print("All items selected")
-    end,
+    end
 })
 
-local ClearAllButton = ItemsTab:CreateButton({
+-- Кнопка очистки выбора
+ItemsTab:AddButton({
     Name = "Clear Selection",
     Callback = function()
         ItemsDropdown:Set({})
         print("Selection cleared")
-    end,
+    end
+})
+
+-- Счётчик выбранных предметов
+local SelectedCountLabel = ItemsTab:AddLabel({
+    Name = "Selected: 0 items",
+    Center = false
+})
+
+-- Статус
+local StatusLabel = ItemsTab:AddLabel({
+    Name = "Status: Ready",
+    Center = false
 })
 
 -- ============================================
--- ВКЛАДКА SETTINGS (НАСТРОЙКИ ТЕЛЕПОРТА)
+-- ВКЛАДКА НАСТРОЕК (TELEPORT)
 -- ============================================
-local SettingsTab = Window:CreateTab("Settings", nil)
+local SettingsTab = Window:AddTab({
+    Name = "Settings"
+})
 
 -- Секция настроек телепорта
-local TeleportSettings = SettingsTab:CreateSection("Teleport Settings")
+SettingsTab:AddSection({
+    Name = "Teleport Settings"
+})
 
--- ПЕРЕКЛЮЧАТЕЛЬ телепортации (вместо кнопки)
-local TeleportToggle = SettingsTab:CreateToggle({
+-- Переключатель телепортации
+local TeleportToggle = SettingsTab:AddToggle({
     Name = "Underground Teleport",
-    CurrentValue = false,
-    Flag = "TeleportEnabled",
+    Default = false,
     Callback = function(Value)
         if Value then
             -- Включаем телепорт
             local success = UndergroundTeleport.Start()
             if success then
                 TeleportStatusLabel:Set("Teleport: 🟢 ACTIVE")
-                TeleportStatusLabel.TextColor3 = Color3.fromRGB(0, 200, 0)
                 print("[Teleport] Toggle ON")
             else
-                TeleportToggle:Set(false) -- Возвращаем выключенное состояние
+                TeleportToggle:Set(false)
             end
         else
             -- Выключаем телепорт
             UndergroundTeleport.Stop()
             TeleportStatusLabel:Set("Teleport: 🔴 OFF")
-            TeleportStatusLabel.TextColor3 = Color3.fromRGB(200, 50, 50)
             print("[Teleport] Toggle OFF")
         end
-    end,
+    end
 })
 
--- Слайдер глубины (максимум 8)
-local DepthSlider = SettingsTab:CreateSlider({
-    Name = "Teleport Depth (MAX: 8)",
-    Range = {1, 8}, -- ФИКС: максимум 8 studs
-    Increment = 1,
-    Suffix = " studs",
-    CurrentValue = math.abs(UndergroundTeleport.Depth),
-    Flag = "TeleportDepth",
+-- Слайдер глубины (1-8 studs)
+SettingsTab:AddSlider({
+    Name = "Teleport Depth",
+    Min = 1,
+    Max = 8,
+    Default = math.abs(UndergroundTeleport.Depth),
+    ValueName = "studs",
     Callback = function(Value)
         UndergroundTeleport.Depth = -Value
         print("[Teleport] Depth set: " .. Value .. " studs")
-    end,
+    end
 })
 
 -- Слайдер задержки
-local DelaySlider = SettingsTab:CreateSlider({
+SettingsTab:AddSlider({
     Name = "Teleport Delay",
-    Range = {0.1, 1.0},
-    Increment = 0.1,
-    Suffix = " sec",
-    CurrentValue = UndergroundTeleport.Delay,
-    Flag = "TeleportDelay",
+    Min = 0.1,
+    Max = 1.0,
+    Default = UndergroundTeleport.Delay,
+    ValueName = "sec",
     Callback = function(Value)
         UndergroundTeleport.Delay = Value
         print("[Teleport] Delay set: " .. Value .. " sec")
-    end,
+    end
 })
 
 -- Кнопка теста пути
-local TestPathButton = SettingsTab:CreateButton({
+SettingsTab:AddButton({
     Name = "Test Item Path",
     Callback = function()
         local points = UndergroundTeleport.FindAllPoints()
-        Rayfield:Notify({
+        Window:Notify({
             Title = "Path Test",
             Content = "Found " .. #points .. " items",
-            Duration = 3,
+            Duration = 3
         })
-    end,
+    end
 })
 
--- Информационная секция
-local InfoSection = SettingsTab:CreateSection("Status")
-local TeleportStatusLabel = SettingsTab:CreateLabel("Teleport: 🔴 OFF")
+-- Статус телепорта
+local TeleportStatusLabel = SettingsTab:AddLabel({
+    Name = "Teleport: 🔴 OFF",
+    Center = false
+})
 
 -- ============================================
--- ИНФОРМАЦИОННАЯ СЕКЦИЯ В ITEMS TAB
--- ============================================
-local ItemsInfoSection = ItemsTab:CreateSection("Information")
-local StatusLabel = ItemsTab:CreateLabel("Status: Ready")
-local SelectedCountLabel = ItemsTab:CreateLabel("Selected: 0 items")
-
--- ============================================
--- ФУНКЦИИ ОБНОВЛЕНИЯ СТАТУСА
+-- ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА
 -- ============================================
 local function updateStatus()
     local count = #SelectedItems
@@ -211,10 +219,10 @@ local function updateStatus()
 end
 
 -- ============================================
--- ИСПРАВЛЕННЫЙ МОДУЛЬ ТЕЛЕПОРТАЦИИ
+-- МОДУЛЬ ТЕЛЕПОРТАЦИИ (адаптированный для Wisteria)
 -- ============================================
 
--- Функция поиска всех точек (ИСПРАВЛЕНА)
+-- Функция поиска всех точек
 function UndergroundTeleport.FindAllPoints()
     local spawnsFolder = workspace:FindFirstChild("Item_Spawns") 
                       or workspace:FindFirstChild("Item_spawns")
@@ -235,7 +243,6 @@ function UndergroundTeleport.FindAllPoints()
     local function scanForPoints(parent)
         for _, child in pairs(parent:GetChildren()) do
             if child:IsA("Model") then
-                -- Ищем промпт в модели
                 for _, obj in pairs(child:GetChildren()) do
                     if obj:IsA("ProximityPrompt") then
                         table.insert(teleportPoints, {
@@ -245,8 +252,6 @@ function UndergroundTeleport.FindAllPoints()
                         break
                     end
                 end
-                
-                -- Рекурсивно проверяем дочерние модели
                 scanForPoints(child)
             end
         end
@@ -271,14 +276,12 @@ local function teleportToPoint(pointPosition)
         return false
     end
     
-    -- Безопасный расчет позиции
     local undergroundPos = Vector3.new(
         pointPosition.X,
-        math.min(pointPosition.Y + UndergroundTeleport.Depth, pointPosition.Y - 1), -- Не выше предмета
+        math.min(pointPosition.Y + UndergroundTeleport.Depth, pointPosition.Y - 1),
         pointPosition.Z
     )
     
-    -- Безопасный телепорт
     local success, err = pcall(function()
         humanoidRootPart.CFrame = CFrame.new(undergroundPos)
     end)
@@ -291,7 +294,7 @@ local function teleportToPoint(pointPosition)
     return true
 end
 
--- Основной цикл телепортации (ИСПРАВЛЕН)
+-- Основной цикл телепортации
 local function teleportationLoop()
     if not UndergroundTeleport.Enabled then 
         return 
@@ -314,12 +317,9 @@ local function teleportationLoop()
         print(string.format("[Teleport] %d/%d - X:%.1f Y:%.1f Z:%.1f", 
             i, #points, point.Position.X, point.Position.Y, point.Position.Z))
         
-        -- Телепортируемся
         if teleportToPoint(point.Position) then
-            -- Ждем стабилизации
             task.wait(0.3)
             
-            -- Проверяем дистанцию
             local character = game.Players.LocalPlayer.Character
             if character then
                 local hrp = character:FindFirstChild("HumanoidRootPart")
@@ -333,7 +333,6 @@ local function teleportationLoop()
                 end
             end
             
-            -- Задержка перед следующей точкой
             task.wait(UndergroundTeleport.Delay)
         else
             print("[Teleport] Failed to teleport to point")
@@ -343,7 +342,7 @@ local function teleportationLoop()
     print("[Teleport] Cycle complete, restarting...")
 end
 
--- Запуск телепортации (ИСПРАВЛЕН)
+-- Запуск телепортации
 function UndergroundTeleport.Start()
     if UndergroundTeleport.Enabled then
         print("[Teleport] Already running")
@@ -353,12 +352,11 @@ function UndergroundTeleport.Start()
     UndergroundTeleport.Enabled = true
     
     print("=" .. string.rep("=", 40))
-    print("🚀 UNDERGROUND TELEPORT STARTED")
+    print("🚀 UNDERGROUND TELEPORT STARTED (Wisteria)")
     print("Depth: " .. math.abs(UndergroundTeleport.Depth) .. " studs")
     print("Delay: " .. UndergroundTeleport.Delay .. " sec")
     print("=" .. string.rep("=", 40))
     
-    -- Запускаем безопасный цикл
     local function safeLoop()
         while UndergroundTeleport.Enabled do
             local success, err = pcall(teleportationLoop)
@@ -369,7 +367,6 @@ function UndergroundTeleport.Start()
         end
     end
     
-    -- Запускаем в отдельном потоке
     task.spawn(safeLoop)
     
     return true
@@ -389,21 +386,21 @@ function UndergroundTeleport.Stop()
 end
 
 -- ============================================
--- ИНИЦИАЛИЗАЦИЯ И НАСТРОЙКА
+-- ИНИЦИАЛИЗАЦИЯ И ЗАВЕРШЕНИЕ
 -- ============================================
 
--- Настройка Rayfield
-Rayfield:SetHotkey("RightShift")
-Rayfield:SetWatermark("POLOHUB v2.0")
+-- Открываем окно после создания
+Window:Open()
 
--- Инициализация статусов
+-- Обновляем начальный статус
 updateStatus()
-TeleportStatusLabel:Set("Teleport: 🔴 OFF")
-TeleportStatusLabel.TextColor3 = Color3.fromRGB(200, 50, 50)
 
-print("======================================")
-print("POLOHUB MANAGER LOADED")
+print("=" .. string.rep("=", 50))
+print("POLOHUB WISTERIA EDITION LOADED")
 print("• Items: " .. #AllYBAItems .. " available")
 print("• Teleport depth: " .. math.abs(UndergroundTeleport.Depth) .. " studs")
-print("• Settings tab for teleport controls")
-print("======================================")
+print("• Interface: Wisteria Library")
+print("=" .. string.rep("=", 50))
+
+-- Возвращаем объект Window для внешнего управления
+return Window
